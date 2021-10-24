@@ -2,8 +2,8 @@ name: Continuous Integration
 
 env:
   OUTPUT_DIR: publish
-  RELEASE_PREFIX: Azure Function Template
-  AZURE_FUNCTIONAPP_NAME: ''
+  RELEASE_PREFIX: Manage Rents
+  AZURE_FUNCTIONAPP_NAME: 'rent-manage-rents'
 
 on:
   workflow_dispatch:
