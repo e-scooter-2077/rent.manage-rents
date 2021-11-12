@@ -10,9 +10,9 @@ using Newtonsoft.Json;
 
 namespace EScooter.Rent.ManageRents
 {
-    public record RentConfirmed(Guid RentId, Guid CustomerId, Guid ScooterId, string Timestamp);
+    public record RentConfirmed(Guid RentId, Guid CustomerId, Guid ScooterId, DateTime Timestamp);
 
-    public record RentStopped(Guid RentId, Guid CustomerId, Guid ScooterId, string Timestamp, string Reason);
+    public record RentCancelledOrStopped(Guid RentId, Guid CustomerId, Guid ScooterId);
 
     public static class ManageRents
     {
@@ -51,7 +51,7 @@ namespace EScooter.Rent.ManageRents
             var credential = new DefaultAzureCredential();
             var digitalTwinsClient = new DigitalTwinsClient(new Uri(digitalTwinUrl), credential);
 
-            var message = JsonConvert.DeserializeObject<RentStopped>(mySbMsg);
+            var message = JsonConvert.DeserializeObject<RentCancelledOrStopped>(mySbMsg);
 
             try
             {
@@ -72,7 +72,7 @@ namespace EScooter.Rent.ManageRents
         {
             private const string RelationshipName = "is_riding";
 
-            public static async Task CreateRentRelationship(Guid rentId, Guid customerId, Guid scooterId, string timeStamp, DigitalTwinsClient digitalTwinsClient)
+            public static async Task CreateRentRelationship(Guid rentId, Guid customerId, Guid scooterId, DateTime timeStamp, DigitalTwinsClient digitalTwinsClient)
             {
                 var relationship = new BasicRelationship
                 {
