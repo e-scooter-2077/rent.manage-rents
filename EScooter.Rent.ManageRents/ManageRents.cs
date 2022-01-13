@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Azure;
 using Azure.DigitalTwins.Core;
 using Azure.Identity;
@@ -14,7 +12,7 @@ namespace EScooter.Rent.ManageRents
 
     public record RentCancelledOrStopped(Guid RentId, Guid CustomerId, Guid ScooterId);
 
-    public static class ManageRents
+    public static partial class ManageRents
     {
         [Function("add-rent")]
         public static async void AddRent([ServiceBusTrigger("%TopicName%", "%AddSubscription%", Connection = "ServiceBusConnectionString")] string mySbMsg, FunctionContext context)
@@ -65,30 +63,6 @@ namespace EScooter.Rent.ManageRents
             catch (RequestFailedException e)
             {
                 logger.LogInformation($"Failed to add Rent: {e.Message}");
-            }
-        }
-
-        internal static class DTUtils
-        {
-            private const string RelationshipName = "is_riding";
-
-            public static async Task CreateRentRelationship(Guid rentId, Guid customerId, Guid scooterId, DateTime timeStamp, DigitalTwinsClient digitalTwinsClient)
-            {
-                var relationship = new BasicRelationship
-                {
-                    TargetId = scooterId.ToString(),
-                    Name = RelationshipName,
-                    Properties = new Dictionary<string, object>()
-                    {
-                        { "start", timeStamp }
-                    }
-                };
-                await digitalTwinsClient.CreateOrReplaceRelationshipAsync(customerId.ToString(), rentId.ToString(), relationship);
-            }
-
-            public static async Task RemoveRentRelationship(Guid rentId, Guid customerId, DigitalTwinsClient digitalTwinsClient)
-            {
-                await digitalTwinsClient.DeleteRelationshipAsync(customerId.ToString(), rentId.ToString());
             }
         }
     }
