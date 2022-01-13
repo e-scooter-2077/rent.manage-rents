@@ -28,5 +28,4 @@ namespace EScooter.Rent.ManageRents
             await digitalTwinsClient.DeleteRelationshipAsync(customerId.ToString(), rentId.ToString());
         }
     }
-
 }
