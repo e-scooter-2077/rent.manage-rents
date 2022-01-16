@@ -1,5 +1,6 @@
 using System;
-using Azure;
+using System.Net.Http;
+using Azure.Core.Pipeline;
 using Azure.DigitalTwins.Core;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker;
@@ -14,56 +15,47 @@ namespace EScooter.Rent.ManageRents
 
     public static partial class ManageRents
     {
+        private static readonly HttpClient _httpClient = new();
+
+        private static DigitalTwinsClient CreateDigitalTwinsClient()
+        {
+            var digitalTwinUrl = "https://" + Environment.GetEnvironmentVariable("AzureDTHostname");
+            var credential = new DefaultAzureCredential();
+            return new DigitalTwinsClient(new Uri(digitalTwinUrl), credential, new DigitalTwinsClientOptions
+            {
+                Transport = new HttpClientTransport(_httpClient)
+            });
+        }
+
         [Function("add-rent")]
         public static async void AddRent([ServiceBusTrigger("%TopicName%", "%AddSubscription%", Connection = "ServiceBusConnectionString")] string mySbMsg, FunctionContext context)
         {
             var logger = context.GetLogger("add-rent");
-            string digitalTwinUrl = "https://" + Environment.GetEnvironmentVariable("AzureDTHostname");
-            var credential = new DefaultAzureCredential();
-            var digitalTwinsClient = new DigitalTwinsClient(new Uri(digitalTwinUrl), credential);
-
             var message = JsonConvert.DeserializeObject<RentConfirmed>(mySbMsg);
+            var client = CreateDigitalTwinsClient();
+            await DTUtils.CreateRentRelationship(
+                message.RentId,
+                message.CustomerId,
+                message.ScooterId,
+                message.Timestamp,
+                client);
 
-            try
-            {
-                await DTUtils.CreateRentRelationship(
-                    message.RentId,
-                    message.CustomerId,
-                    message.ScooterId,
-                    message.Timestamp,
-                    digitalTwinsClient);
-
-                logger.LogInformation($"Add Rent: {mySbMsg}");
-            }
-            catch (RequestFailedException e)
-            {
-                logger.LogInformation($"Failed to add Rent: {e.Message}");
-            }
+            logger.LogInformation($"Add Rent: {mySbMsg}");
         }
 
         [Function("remove-rent")]
         public static async void RemoveRent([ServiceBusTrigger("%TopicName%", "%RemoveSubscription%", Connection = "ServiceBusConnectionString")] string mySbMsg, FunctionContext context)
         {
             var logger = context.GetLogger("remove-rent");
-            string digitalTwinUrl = "https://" + Environment.GetEnvironmentVariable("AzureDTHostname");
-            var credential = new DefaultAzureCredential();
-            var digitalTwinsClient = new DigitalTwinsClient(new Uri(digitalTwinUrl), credential);
-
             var message = JsonConvert.DeserializeObject<RentCancelledOrStopped>(mySbMsg);
+            var client = CreateDigitalTwinsClient();
 
-            try
-            {
-                await DTUtils.RemoveRentRelationship(
-                    message.RentId,
-                    message.CustomerId,
-                    digitalTwinsClient);
+            await DTUtils.RemoveRentRelationship(
+                message.RentId,
+                message.CustomerId,
+                client);
 
-                logger.LogInformation($"Remove rent: {mySbMsg}");
-            }
-            catch (RequestFailedException e)
-            {
-                logger.LogInformation($"Failed to add Rent: {e.Message}");
-            }
+            logger.LogInformation($"Remove rent: {mySbMsg}");
         }
     }
 }
